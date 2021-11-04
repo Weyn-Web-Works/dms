@@ -273,6 +273,14 @@
                                                 <i class="fa fa-trash-o" />
                                                 Delete
                                             </a>
+                                            <a
+                                                role="menuitem"
+                                                class="dropdown-item"
+                                                t-attf-href="/web/content?id=#{record.id.raw_value}&amp;field=zip_content_b64&amp;model=dms.directory&amp;filename_field=zip_name&amp;download=true"
+                                            >
+                                                <i class="fa fa-download" />
+                                                Download
+                                            </a>
                                         </div>
                                     </div>
                                     <div
@@ -379,6 +387,7 @@
             </tree>
         </field>
     </record>
+
     <record id="view_dms_directory_form" model="ir.ui.view">
         <field name="name">dms_directory.form</field>
         <field name="model">dms.directory</field>

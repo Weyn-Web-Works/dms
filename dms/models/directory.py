@@ -5,7 +5,10 @@
 
 import ast
 import base64
+import hashlib
+import io
 import logging
+import zipfile
 from collections import defaultdict
 
 from odoo import _, api, fields, models, tools
@@ -19,6 +22,11 @@ from ..tools.file import check_name, unique_name
 
 _logger = logging.getLogger(__name__)
 
+def _add_to_zip(record, prefix, zip_file):
+    for f in record.file_ids:
+        zip_file.writestr(prefix + f.name, base64.b64decode(f.content))
+    for d in record.child_directory_ids:
+        _add_to_zip(d, prefix + d.name + "/", zip_file)
 
 class DmsDirectory(models.Model):
 
@@ -202,6 +210,49 @@ class DmsDirectory(models.Model):
                 are created as files of the subdirectory.
                 """,
     )
+
+    zip_name = fields.Char(
+        "Zip Name", compute="_compute_zip_name", store=False
+    )
+
+    zip_content = fields.Binary(
+        compute="_compute_zip_content",
+        string="Zip Content",
+        attachment=False,
+        prefetch=False,
+        store=False,
+    )
+
+    zip_content_b64 = fields.Binary(
+        compute="_compute_zip_content_b64",
+        string="Zip Content Base64 encoded",
+        attachment=False,
+        prefetch=False,
+        store=False,
+    )
+
+    checksum = fields.Char(string="Zip Checksum (SHA1)", compute="_compute_zip_sha1", store=False)
+
+    def _compute_zip_name(self):
+        for record in self:
+            record.zip_name = record.name + ".zip"
+            print(record.zip_name)
+
+    def _compute_zip_content(self):
+        for record in self:
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                _add_to_zip(record, "", zip_file)
+                zip_file.close()
+            record.zip_content = zip_buffer.getvalue()
+
+    def _compute_zip_content_b64(self):
+        for record in self:
+            record.zip_content_b64 = base64.b64encode(record.zip_content)
+
+    def _compute_zip_sha1(self):
+        for record in self:
+            record.checksum = hashlib.sha1(record.zip_content)
 
     @api.model
     def _get_domain_by_access_groups(self, operation):
